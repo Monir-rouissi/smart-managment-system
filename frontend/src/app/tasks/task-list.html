@@ -1,0 +1,44 @@
+<div class="container">
+  <div class="page-header">
+    <h1>Tasks</h1>
+  </div>
+
+  <div class="toolbar">
+    <input [(ngModel)]="q" (keyup.enter)="load()" name="q" placeholder="Search title / description" />
+    <select [(ngModel)]="status" (change)="load()" name="status">
+      <option value="">All statuses</option>
+      @for (s of statuses; track s) { <option [value]="s">{{ s }}</option> }
+    </select>
+    <button class="btn" (click)="load()">Apply</button>
+  </div>
+
+  @if (loading()) {
+    <p class="muted">Loading…</p>
+  } @else if (tasks().length === 0) {
+    <div class="card empty">No tasks match.</div>
+  } @else {
+    <table>
+      <thead>
+        <tr><th>Title</th><th>Status</th><th>Project</th><th>Due</th><th></th></tr>
+      </thead>
+      <tbody>
+        @for (t of tasks(); track t.id) {
+          <tr>
+            <td>{{ t.title }}</td>
+            <td><span class="badge">{{ t.status }}</span></td>
+            <td><a [routerLink]="['/projects', t.projectId]">{{ t.projectName }}</a></td>
+            <td>
+              {{ t.dueDate || '—' }}
+              @if (t.overdue) { <span class="badge overdue">overdue</span> }
+            </td>
+            <td>
+              <div class="row-actions">
+                <button class="btn btn-sm btn-danger" (click)="remove(t)">Delete</button>
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

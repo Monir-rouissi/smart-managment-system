@@ -1,1 +1,124 @@
-/* You can add global styles to this file, and also import other style files */
+:root {
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --border: #e4e7ec;
+  --text: #1d2939;
+  --muted: #667085;
+  --primary: #3538cd;
+  --primary-contrast: #ffffff;
+  --danger: #d92d20;
+  --radius: 8px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+a { color: var(--primary); }
+
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.page-header h1 { font-size: 1.4rem; margin: 0; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+th, td {
+  text-align: left;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+th { background: #fcfcfd; color: var(--muted); font-weight: 600; }
+tr:last-child td { border-bottom: none; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:hover { background: #f2f4f7; }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: var(--primary-contrast); }
+.btn-primary:hover { filter: brightness(1.08); }
+.btn-danger { color: var(--danger); border-color: #fda29b; }
+.btn-sm { padding: 0.25rem 0.5rem; font-size: 0.8rem; }
+
+.field { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.9rem; }
+.field label { font-size: 0.85rem; color: var(--muted); }
+.field input, .field select, .field textarea {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  background: var(--surface);
+}
+.field .error { color: var(--danger); font-size: 0.8rem; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.2rem;
+}
+
+.toolbar { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; }
+.toolbar input, .toolbar select {
+  padding: 0.45rem 0.6rem; border: 1px solid var(--border); border-radius: 6px; font: inherit;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: #eef2ff;
+  color: var(--primary);
+}
+.badge.overdue { background: #fef3f2; color: var(--danger); }
+
+.muted { color: var(--muted); }
+.empty { padding: 2rem; text-align: center; color: var(--muted); }
+.row-actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
+
+nav.appnav {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 1.5rem;
+}
+nav.appnav .inner { max-width: 1000px; margin: 0 auto; display: flex; gap: 1.25rem; align-items: center; height: 52px; }
+nav.appnav a { color: var(--muted); text-decoration: none; font-size: 0.9rem; font-weight: 500; }
+nav.appnav a.active { color: var(--text); }
+nav.appnav .brand { font-weight: 700; color: var(--text); }

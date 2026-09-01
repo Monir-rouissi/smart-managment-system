@@ -1,0 +1,47 @@
+<div class="container">
+  <div class="page-header">
+    <h1>Projects</h1>
+    <a class="btn btn-primary" routerLink="/projects/new">New project</a>
+  </div>
+
+  <div class="toolbar">
+    <input [(ngModel)]="q" (keyup.enter)="load()" name="q" placeholder="Search name / description" />
+    <select [(ngModel)]="status" (change)="load()" name="status">
+      <option value="">All statuses</option>
+      @for (s of statuses; track s) { <option [value]="s">{{ s }}</option> }
+    </select>
+    <label class="muted"><input type="checkbox" [(ngModel)]="overdueOnly" (change)="load()" name="overdue" /> Overdue only</label>
+    <button class="btn" (click)="load()">Apply</button>
+  </div>
+
+  @if (loading()) {
+    <p class="muted">Loading…</p>
+  } @else if (projects().length === 0) {
+    <div class="card empty">No projects match.</div>
+  } @else {
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Status</th><th>Customer</th><th>Due</th><th></th></tr>
+      </thead>
+      <tbody>
+        @for (p of projects(); track p.id) {
+          <tr>
+            <td><a [routerLink]="['/projects', p.id]">{{ p.name }}</a></td>
+            <td><span class="badge">{{ p.status }}</span></td>
+            <td>{{ p.customerName || '—' }}</td>
+            <td>
+              {{ p.dueDate || '—' }}
+              @if (p.overdue) { <span class="badge overdue">overdue</span> }
+            </td>
+            <td>
+              <div class="row-actions">
+                <a class="btn btn-sm" [routerLink]="['/projects', p.id, 'edit']">Edit</a>
+                <button class="btn btn-sm btn-danger" (click)="remove(p)">Delete</button>
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

@@ -1,0 +1,68 @@
+<div class="container">
+  @if (project(); as p) {
+    <div class="page-header">
+      <h1>{{ p.name }} <span class="badge">{{ p.status }}</span>
+        @if (p.overdue) { <span class="badge overdue">overdue</span> }
+      </h1>
+      <div class="row-actions">
+        <a class="btn" routerLink="/projects">Back</a>
+        <a class="btn" [routerLink]="['/projects', p.id, 'edit']">Edit</a>
+        <button class="btn btn-danger" (click)="deleteProject()">Delete</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="muted" style="margin-top:0">{{ p.description || 'No description.' }}</p>
+      <p>
+        <strong>Customer:</strong> {{ p.customerName || '—' }} &nbsp;·&nbsp;
+        <strong>Owner:</strong> {{ p.ownerName || '—' }} &nbsp;·&nbsp;
+        <strong>Start:</strong> {{ p.startDate || '—' }} &nbsp;·&nbsp;
+        <strong>Due:</strong> {{ p.dueDate || '—' }}
+      </p>
+    </div>
+
+    <h2 style="font-size:1.1rem;margin-top:1.5rem">Tasks</h2>
+
+    <form class="toolbar" [formGroup]="taskForm" (ngSubmit)="addTask()">
+      <input formControlName="title" placeholder="New task title" />
+      <select formControlName="status">
+        @for (s of taskStatuses; track s) { <option [value]="s">{{ s }}</option> }
+      </select>
+      <input type="date" formControlName="dueDate" />
+      <button class="btn btn-primary" type="submit">Add task</button>
+    </form>
+
+    @if (tasks().length === 0) {
+      <div class="card empty">No tasks yet.</div>
+    } @else {
+      <table>
+        <thead>
+          <tr><th>Title</th><th>Status</th><th>Due</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (t of tasks(); track t.id) {
+            <tr>
+              <td>{{ t.title }}</td>
+              <td>
+                <button class="btn btn-sm" (click)="cycleStatus(t)" title="Click to advance status">
+                  {{ t.status }}
+                </button>
+              </td>
+              <td>
+                {{ t.dueDate || '—' }}
+                @if (t.overdue) { <span class="badge overdue">overdue</span> }
+              </td>
+              <td>
+                <div class="row-actions">
+                  <button class="btn btn-sm btn-danger" (click)="removeTask(t)">Delete</button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  } @else {
+    <p class="muted">Loading…</p>
+  }
+</div>

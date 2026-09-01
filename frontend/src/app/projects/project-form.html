@@ -1,0 +1,50 @@
+<div class="container">
+  <div class="page-header">
+    <h1>{{ isEdit ? 'Edit project' : 'New project' }}</h1>
+    <a class="btn" routerLink="/projects">Back</a>
+  </div>
+
+  <form class="card" [formGroup]="form" (ngSubmit)="save()">
+    <div class="field">
+      <label for="name">Name *</label>
+      <input id="name" formControlName="name" />
+      @if (form.controls.name.touched && form.controls.name.invalid) {
+        <span class="error">Name is required (max 200 chars).</span>
+      }
+    </div>
+
+    <div class="field">
+      <label for="description">Description</label>
+      <textarea id="description" rows="3" formControlName="description"></textarea>
+    </div>
+
+    <div class="field">
+      <label for="status">Status</label>
+      <select id="status" formControlName="status">
+        @for (s of statuses; track s) { <option [value]="s">{{ s }}</option> }
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="customerId">Customer</label>
+      <select id="customerId" formControlName="customerId">
+        <option value="">— none —</option>
+        @for (c of customers(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="startDate">Start date</label>
+      <input id="startDate" type="date" formControlName="startDate" />
+    </div>
+
+    <div class="field">
+      <label for="dueDate">Due date</label>
+      <input id="dueDate" type="date" formControlName="dueDate" />
+    </div>
+
+    @if (error()) { <p class="error">{{ error() }}</p> }
+
+    <button class="btn btn-primary" type="submit">Save</button>
+  </form>
+</div>
