@@ -74,9 +74,25 @@ cd backend && ./mvnw test     # uses Testcontainers (Docker required)
 cd frontend && npm test
 ```
 
+## API
+
+| Resource | Endpoints | Filters |
+|---|---|---|
+| Customers | `GET/POST /api/customers`, `GET/PUT/DELETE /api/customers/{id}` | `q` |
+| Projects | `GET/POST /api/projects`, `GET/PUT/DELETE /api/projects/{id}` | `q`, `status`, `customerId`, `ownerId`, `overdue` |
+| Tasks | `GET/POST /api/tasks`, `GET/PUT/DELETE /api/tasks/{id}` | `q`, `status`, `projectId`, `assigneeId` |
+
+All list endpoints take `page`, `size` (max 100), `sort`. Responses use a
+`PageResponse` envelope. Validation errors return RFC 9457 `ProblemDetail` (400 with
+an `errors` array); unknown ids return 404.
+
 ## Current status
 
-First milestone — scaffold: Docker Compose + Postgres/pgvector, Spring Boot app with
-Flyway and Actuator, Angular app with routing + auth interceptor stub, and a
-`GET /api/health` endpoint reachable from Angular. Next: Flyway domain tables and CRUD
-for customers / projects / tasks.
+- **Scaffold** — Docker Compose + Postgres/pgvector, Spring Boot (Flyway, Actuator),
+  Angular (routing, auth interceptor stub), `GET /api/health`.
+- **Core CRUD** — `users`/`customers`/`projects`/`tasks` tables; REST APIs with
+  pagination, filtering, and Bean Validation; Angular list/detail/form pages for all
+  three. Integration tests on real Postgres via Testcontainers.
+
+Next: JWT auth + `@PreAuthorize` RBAC + seed users + Angular route guards, then the
+audit trail (Phase 3).
