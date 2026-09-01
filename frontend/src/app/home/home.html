@@ -1,0 +1,14 @@
+<main class="home">
+  <h1>Smart Management System</h1>
+  <p class="subtitle">AI-Powered Management &amp; Knowledge Platform</p>
+
+  <section class="status-card" [class.up]="status() === 'up'" [class.down]="status() === 'down'">
+    <span class="dot"></span>
+    @switch (status()) {
+      @case ('checking') { <span>Checking backend…</span> }
+      @case ('up') { <span>Backend is up</span> }
+      @case ('down') { <span>Backend is down</span> }
+    }
+    @if (detail()) { <small>{{ detail() }}</small> }
+  </section>
+</main>

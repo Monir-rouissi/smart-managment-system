@@ -1,0 +1,21 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: smartmgmt-db
+    environment:
+      POSTGRES_DB: smartmgmt
+      POSTGRES_USER: smartmgmt
+      POSTGRES_PASSWORD: smartmgmt
+    ports:
+      # Host 5432 is often taken by a native Postgres install; use 5433 outside.
+      - "5433:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartmgmt -d smartmgmt"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db-data:
