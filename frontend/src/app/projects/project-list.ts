@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
+import { AuthService } from '../core/auth.service';
 import { PROJECT_STATUSES, Project, ProjectStatus } from './project';
 import { ProjectService } from './project.service';
 
@@ -12,6 +13,7 @@ import { ProjectService } from './project.service';
 })
 export class ProjectList {
   private readonly service = inject(ProjectService);
+  protected readonly auth = inject(AuthService);
 
   protected readonly statuses = PROJECT_STATUSES;
   protected readonly projects = signal<Project[]>([]);

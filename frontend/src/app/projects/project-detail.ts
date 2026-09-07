@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
+import { AuthService } from '../core/auth.service';
 import { TASK_STATUSES, Task } from '../tasks/task';
 import { TaskService } from '../tasks/task.service';
 import { Project } from './project';
@@ -18,6 +19,7 @@ export class ProjectDetail {
   private readonly taskService = inject(TaskService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  protected readonly auth = inject(AuthService);
 
   private readonly id = this.route.snapshot.paramMap.get('id')!;
 
@@ -38,6 +40,11 @@ export class ProjectDetail {
 
   loadTasks(): void {
     this.taskService.list({ projectId: this.id, size: 100 }).subscribe((page) => this.tasks.set(page.content));
+  }
+
+  /** ADMIN/MANAGER can edit any task; a USER can only advance a task assigned to them. */
+  canEditTask(t: Task): boolean {
+    return this.auth.hasRole('ADMIN', 'MANAGER') || t.assigneeId === this.auth.user()?.id;
   }
 
   addTask(): void {

@@ -46,3 +46,12 @@ info:
   app:
     name: Smart Management System
     description: AI-Powered Management & Knowledge Platform
+
+app:
+  jwt:
+    # HS256 signing key. MUST be overridden via JWT_SECRET outside local dev;
+    # the app refuses to start if it is under 32 bytes (256 bits).
+    secret: ${JWT_SECRET:dev-only-secret-do-not-use-in-production-change-me-1234567890}
+    access-token-ttl: 15m
+    refresh-token-ttl: 7d
+    issuer: smart-management-system

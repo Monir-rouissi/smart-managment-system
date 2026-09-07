@@ -1,7 +1,9 @@
 <div class="container">
   <div class="page-header">
     <h1>Customers</h1>
-    <a class="btn btn-primary" routerLink="/customers/new">New customer</a>
+    @if (auth.hasRole('ADMIN', 'MANAGER')) {
+      <a class="btn btn-primary" routerLink="/customers/new">New customer</a>
+    }
   </div>
 
   <div class="toolbar">
@@ -26,10 +28,12 @@
             <td>{{ c.email || '—' }}</td>
             <td>{{ c.phone || '—' }}</td>
             <td>
-              <div class="row-actions">
-                <a class="btn btn-sm" [routerLink]="['/customers', c.id]">Edit</a>
-                <button class="btn btn-sm btn-danger" (click)="remove(c)">Delete</button>
-              </div>
+              @if (auth.hasRole('ADMIN', 'MANAGER')) {
+                <div class="row-actions">
+                  <a class="btn btn-sm" [routerLink]="['/customers', c.id]">Edit</a>
+                  <button class="btn btn-sm btn-danger" (click)="remove(c)">Delete</button>
+                </div>
+              }
             </td>
           </tr>
         }

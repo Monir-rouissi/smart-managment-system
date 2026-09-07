@@ -1,7 +1,9 @@
 <div class="container">
   <div class="page-header">
     <h1>Projects</h1>
-    <a class="btn btn-primary" routerLink="/projects/new">New project</a>
+    @if (auth.hasRole('ADMIN', 'MANAGER')) {
+      <a class="btn btn-primary" routerLink="/projects/new">New project</a>
+    }
   </div>
 
   <div class="toolbar">
@@ -34,10 +36,12 @@
               @if (p.overdue) { <span class="badge overdue">overdue</span> }
             </td>
             <td>
-              <div class="row-actions">
-                <a class="btn btn-sm" [routerLink]="['/projects', p.id, 'edit']">Edit</a>
-                <button class="btn btn-sm btn-danger" (click)="remove(p)">Delete</button>
-              </div>
+              @if (auth.hasRole('ADMIN', 'MANAGER')) {
+                <div class="row-actions">
+                  <a class="btn btn-sm" [routerLink]="['/projects', p.id, 'edit']">Edit</a>
+                  <button class="btn btn-sm btn-danger" (click)="remove(p)">Delete</button>
+                </div>
+              }
             </td>
           </tr>
         }

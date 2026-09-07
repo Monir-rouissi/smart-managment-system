@@ -32,9 +32,11 @@
               @if (t.overdue) { <span class="badge overdue">overdue</span> }
             </td>
             <td>
-              <div class="row-actions">
-                <button class="btn btn-sm btn-danger" (click)="remove(t)">Delete</button>
-              </div>
+              @if (auth.hasRole('ADMIN', 'MANAGER')) {
+                <div class="row-actions">
+                  <button class="btn btn-sm btn-danger" (click)="remove(t)">Delete</button>
+                </div>
+              }
             </td>
           </tr>
         }

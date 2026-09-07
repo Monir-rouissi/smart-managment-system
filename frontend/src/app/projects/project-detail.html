@@ -6,8 +6,10 @@
       </h1>
       <div class="row-actions">
         <a class="btn" routerLink="/projects">Back</a>
-        <a class="btn" [routerLink]="['/projects', p.id, 'edit']">Edit</a>
-        <button class="btn btn-danger" (click)="deleteProject()">Delete</button>
+        @if (auth.hasRole('ADMIN', 'MANAGER')) {
+          <a class="btn" [routerLink]="['/projects', p.id, 'edit']">Edit</a>
+          <button class="btn btn-danger" (click)="deleteProject()">Delete</button>
+        }
       </div>
     </div>
 
@@ -23,14 +25,16 @@
 
     <h2 style="font-size:1.1rem;margin-top:1.5rem">Tasks</h2>
 
-    <form class="toolbar" [formGroup]="taskForm" (ngSubmit)="addTask()">
-      <input formControlName="title" placeholder="New task title" />
-      <select formControlName="status">
-        @for (s of taskStatuses; track s) { <option [value]="s">{{ s }}</option> }
-      </select>
-      <input type="date" formControlName="dueDate" />
-      <button class="btn btn-primary" type="submit">Add task</button>
-    </form>
+    @if (auth.hasRole('ADMIN', 'MANAGER')) {
+      <form class="toolbar" [formGroup]="taskForm" (ngSubmit)="addTask()">
+        <input formControlName="title" placeholder="New task title" />
+        <select formControlName="status">
+          @for (s of taskStatuses; track s) { <option [value]="s">{{ s }}</option> }
+        </select>
+        <input type="date" formControlName="dueDate" />
+        <button class="btn btn-primary" type="submit">Add task</button>
+      </form>
+    }
 
     @if (tasks().length === 0) {
       <div class="card empty">No tasks yet.</div>
@@ -44,18 +48,24 @@
             <tr>
               <td>{{ t.title }}</td>
               <td>
-                <button class="btn btn-sm" (click)="cycleStatus(t)" title="Click to advance status">
-                  {{ t.status }}
-                </button>
+                @if (canEditTask(t)) {
+                  <button class="btn btn-sm" (click)="cycleStatus(t)" title="Click to advance status">
+                    {{ t.status }}
+                  </button>
+                } @else {
+                  <span class="badge">{{ t.status }}</span>
+                }
               </td>
               <td>
                 {{ t.dueDate || '—' }}
                 @if (t.overdue) { <span class="badge overdue">overdue</span> }
               </td>
               <td>
-                <div class="row-actions">
-                  <button class="btn btn-sm btn-danger" (click)="removeTask(t)">Delete</button>
-                </div>
+                @if (auth.hasRole('ADMIN', 'MANAGER')) {
+                  <div class="row-actions">
+                    <button class="btn btn-sm btn-danger" (click)="removeTask(t)">Delete</button>
+                  </div>
+                }
               </td>
             </tr>
           }

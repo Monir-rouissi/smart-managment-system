@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
+import { AuthService } from '../core/auth.service';
 import { TASK_STATUSES, Task, TaskStatus } from './task';
 import { TaskService } from './task.service';
 
@@ -12,6 +13,7 @@ import { TaskService } from './task.service';
 })
 export class TaskList {
   private readonly service = inject(TaskService);
+  protected readonly auth = inject(AuthService);
 
   protected readonly statuses = TASK_STATUSES;
   protected readonly tasks = signal<Task[]>([]);

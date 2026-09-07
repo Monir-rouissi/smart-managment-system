@@ -1,24 +1,24 @@
 # Smart Management System
 
-AI-Powered Management & Knowledge Platform — an enterprise Spring Boot application with
-RBAC, document ingestion, vector search, and a retrieval-augmented (RAG) chatbot that
-answers from application data.
+Enterprise project & knowledge platform: Angular + Spring Boot + PostgreSQL/pgvector,
+with a RAG assistant that answers from **app data and documents** (not a generic chatbot).
 
-See [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) for the full roadmap.
+**Today this repo has the management CRUD foundation plus JWT auth and RBAC.** Audit,
+documents, and RAG are planned, not implemented. Full roadmap: [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
 
 ## Stack
 
 | Layer | Choice |
 |---|---|
 | UI | Angular 20 |
-| API | Spring Boot 4, Java 21, single JAR |
+| API | Spring Boot 4.1.1, Java 21, single JAR |
+| Auth | Spring Security, JWT (access + refresh), roles `ADMIN` / `MANAGER` / `USER` |
 | Data | PostgreSQL 16 + pgvector |
 | Migrations | Flyway |
 | Ops | Docker Compose |
 
-> The plan targets "Spring Boot 3"; it was written before Boot 4 GA. Spring Initializr
-> now only offers Boot 4.x and all 3.x lines are out of OSS support, so this project
-> uses **Spring Boot 4.1.1** on Java 21.
+Spring Initializr currently offers Boot 4.x (3.x is out of OSS support), so this project
+uses **Spring Boot 4.1.1** on Java 21.
 
 ## Repo layout
 
@@ -27,9 +27,57 @@ smart-managment-sytem/
   docker-compose.yml      # Postgres + pgvector
   backend/                # Spring Boot API
   frontend/               # Angular app
-  observability/          # prometheus / grafana config (later phases)
-  eval/                   # RAG eval dataset + runner (later phases)
+  observability/          # Prometheus / Grafana (later)
+  eval/                   # RAG eval dataset + runner (later)
 ```
+
+## Current status
+
+| Milestone | Status |
+|---|---|
+| Scaffold (Compose, Flyway, Actuator, Angular, `/api/health`) | Done |
+| Core CRUD (customers, projects, tasks + UI + Testcontainers) | Done |
+| JWT + RBAC (`ADMIN` / `MANAGER` / `USER`) | Done |
+| Audit trail | **Next** |
+| Document upload → extract → chunk → embeddings | Not started |
+| Keyword + semantic search | Not started |
+| RAG chatbot + citations | Not started |
+| Database-aware chat (read-only tools) | Not started |
+| Redis, WebSocket, observability, eval, Docker deploy | Later |
+
+## Auth & RBAC
+
+Spring Security + stateless JWT. `POST /api/auth/login` returns a short-lived access
+token (15 min, HS256) and an opaque refresh token (7 days); `POST /api/auth/refresh`
+rotates it (the old refresh token is revoked the moment a new one is issued), and
+`POST /api/auth/logout` revokes it outright. `GET /api/me` returns the caller's profile.
+Refresh tokens are stored hashed (HMAC-SHA256), never in plaintext.
+
+Every write endpoint and every list/get endpoint enforces `@PreAuthorize` on top of the
+stateless-session URL rule (`anyRequest().authenticated()`):
+
+| Role | Customers | Projects | Tasks |
+|---|---|---|---|
+| ADMIN | full CRUD | full CRUD | full CRUD |
+| MANAGER | full CRUD | full CRUD | full CRUD |
+| USER | read only | read/list **own projects only** | read/list **assigned tasks only**; can update status/description/title/due date on a task assigned to them (cannot reassign, unassign, or move it) |
+
+Seed accounts (BCrypt-hashed, Flyway `V4__seed_users.sql`) for local dev/demo:
+
+| Email | Password | Role |
+|---|---|---|
+| `admin@local` | `admin123` | ADMIN |
+| `manager@local` | `manager123` | MANAGER |
+| `user@local` | `user123` | USER |
+
+Change or remove these before any non-local deployment, and set a real `JWT_SECRET`
+(the app refuses to start with a signing key under 32 bytes).
+
+List endpoints also allowlist `?sort=` fields per resource, so a client cannot sort by
+a related entity's column (e.g. `owner.passwordHash`) — invalid fields get a 400.
+
+After that: Phase 3 audit trail, then documents, then search/RAG. Do not start the chatbot
+until auth and document search work. See the plan for the rest.
 
 ## Run it
 
@@ -39,7 +87,7 @@ smart-managment-sytem/
 docker compose up -d db
 ```
 
-Postgres listens on **host port 5433** (5432 is commonly taken by a native install).
+Postgres listens on **host port 5433** (5432 is often taken by a native install).
 Credentials: `smartmgmt` / `smartmgmt`, database `smartmgmt`.
 
 ### 2. Backend
@@ -53,7 +101,8 @@ cd backend
 - Liveness: `GET /api/health`
 - Actuator: `GET /actuator/health`
 
-Override DB connection with env vars if needed: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`.
+Override DB with `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` if needed, and set `JWT_SECRET`
+to a real 32+ byte value outside local dev (there's a dev-only default otherwise).
 
 ### 3. Frontend
 
@@ -65,34 +114,36 @@ npm start
 
 - App: http://localhost:4200
 - `/api/*` is proxied to the backend (`proxy.conf.json`)
-- The home page shows a live backend health indicator.
+- You'll land on `/login` — use one of the seed accounts above. Home shows a live
+  backend health indicator; the nav hides actions a role can't use (e.g. a USER never
+  sees "New project").
 
 ## Tests
 
 ```bash
-cd backend && ./mvnw test     # uses Testcontainers (Docker required)
+cd backend && ./mvnw test     # Testcontainers (Docker required)
 cd frontend && npm test
 ```
 
-## API
+`AuthControllerTest` covers login/refresh-rotation/logout/`/api/me`; `RbacTest` and
+`ExpiredTokenTest` cover the milestone's "done when" criteria directly (USER blocked
+from `POST /api/projects`, MANAGER allowed, expired token rejected, bad sort field
+rejected).
+
+## API (current)
 
 | Resource | Endpoints | Filters |
 |---|---|---|
+| Auth | `POST /api/auth/login`, `refresh`, `logout`, `GET /api/me` | — |
 | Customers | `GET/POST /api/customers`, `GET/PUT/DELETE /api/customers/{id}` | `q` |
 | Projects | `GET/POST /api/projects`, `GET/PUT/DELETE /api/projects/{id}` | `q`, `status`, `customerId`, `ownerId`, `overdue` |
 | Tasks | `GET/POST /api/tasks`, `GET/PUT/DELETE /api/tasks/{id}` | `q`, `status`, `projectId`, `assigneeId` |
 
-All list endpoints take `page`, `size` (max 100), `sort`. Responses use a
-`PageResponse` envelope. Validation errors return RFC 9457 `ProblemDetail` (400 with
-an `errors` array); unknown ids return 404.
+All endpoints except `/api/auth/**` and `/api/health` require a `Bearer` access token.
+List endpoints take `page`, `size` (max 100), `sort` (allowlisted per resource). Bodies
+use DTOs; lists return a `PageResponse` envelope. Validation errors are RFC 9457
+`ProblemDetail` (400 + `errors`); unknown ids return 404; RBAC/ownership denials return
+403; missing/invalid/expired tokens return 401.
 
-## Current status
-
-- **Scaffold** — Docker Compose + Postgres/pgvector, Spring Boot (Flyway, Actuator),
-  Angular (routing, auth interceptor stub), `GET /api/health`.
-- **Core CRUD** — `users`/`customers`/`projects`/`tasks` tables; REST APIs with
-  pagination, filtering, and Bean Validation; Angular list/detail/form pages for all
-  three. Integration tests on real Postgres via Testcontainers.
-
-Next: JWT auth + `@PreAuthorize` RBAC + seed users + Angular route guards, then the
-audit trail (Phase 3).
+README sections for the audit trail, RAG + citations, SQL-tool safety, and eval will be
+added when those phases land.

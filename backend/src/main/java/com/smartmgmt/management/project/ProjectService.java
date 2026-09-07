@@ -4,15 +4,19 @@ import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.smartmgmt.auth.SecurityUtils;
+import com.smartmgmt.auth.UserPrincipal;
 import com.smartmgmt.common.NotFoundException;
 import com.smartmgmt.management.customer.Customer;
 import com.smartmgmt.management.customer.CustomerRepository;
 import com.smartmgmt.management.project.dto.ProjectRequest;
 import com.smartmgmt.management.project.dto.ProjectResponse;
+import com.smartmgmt.management.user.Role;
 import com.smartmgmt.management.user.User;
 import com.smartmgmt.management.user.UserRepository;
 
@@ -35,14 +39,22 @@ public class ProjectService {
     @Transactional(readOnly = true)
     public Page<ProjectResponse> list(String q, ProjectStatus status, UUID customerId,
             UUID ownerId, Boolean overdue, Pageable pageable) {
+        UUID effectiveOwnerId = ownerId;
+        UserPrincipal current = SecurityUtils.currentUser();
+        if (current.getRole() == Role.USER) {
+            // USER sees only projects they own, regardless of what was requested.
+            effectiveOwnerId = current.getId();
+        }
         return projects.findAll(
-                ProjectSpecifications.build(q, status, customerId, ownerId, overdue), pageable)
+                ProjectSpecifications.build(q, status, customerId, effectiveOwnerId, overdue), pageable)
                 .map(ProjectResponse::from);
     }
 
     @Transactional(readOnly = true)
     public ProjectResponse get(UUID id) {
-        return ProjectResponse.from(findOrThrow(id));
+        Project project = findOrThrow(id);
+        requireVisibleToCurrentUser(project);
+        return ProjectResponse.from(project);
     }
 
     public ProjectResponse create(ProjectRequest request) {
@@ -62,6 +74,14 @@ public class ProjectService {
             throw new NotFoundException("Project", id);
         }
         projects.deleteById(id);
+    }
+
+    private void requireVisibleToCurrentUser(Project project) {
+        UserPrincipal current = SecurityUtils.currentUser();
+        if (current.getRole() == Role.USER
+                && (project.getOwner() == null || !project.getOwner().getId().equals(current.getId()))) {
+            throw new AccessDeniedException("You do not have access to this project");
+        }
     }
 
     private Project findOrThrow(UUID id) {

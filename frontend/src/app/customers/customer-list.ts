@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
+import { AuthService } from '../core/auth.service';
 import { Customer } from './customer';
 import { CustomerService } from './customer.service';
 
@@ -12,6 +13,7 @@ import { CustomerService } from './customer.service';
 })
 export class CustomerList {
   private readonly service = inject(CustomerService);
+  protected readonly auth = inject(AuthService);
 
   protected readonly customers = signal<Customer[]>([]);
   protected readonly loading = signal(true);
