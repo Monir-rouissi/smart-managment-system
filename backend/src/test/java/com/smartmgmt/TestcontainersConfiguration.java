@@ -7,7 +7,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 @TestConfiguration(proxyBeanMethods = false)
-class TestcontainersConfiguration {
+public class TestcontainersConfiguration {
 
 	// Same image as docker-compose so Flyway's `CREATE EXTENSION vector` works in tests.
 	private static final DockerImageName POSTGRES_IMAGE =

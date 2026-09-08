@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, MockMvcSecurityConfiguration.class})
 @Transactional
 public abstract class IntegrationTest {
 }

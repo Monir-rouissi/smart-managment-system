@@ -57,6 +57,21 @@ app:
     documents-dir: ${DOCUMENTS_DIR:./uploads/documents}
     max-file-size-bytes: 26214400 # 25MB, keep in sync with spring.servlet.multipart.max-file-size
 
+  ingest:
+    enabled: true
+    chunk-tokens: 600
+    overlap-tokens: 90            # ~15% overlap
+    max-chunks-per-document: 2000
+    embedding-batch-size: 64
+    dimensions: 1536              # must match vector(1536) in V6__document_chunks.sql
+    worker-threads: 2
+    queue-capacity: 100
+    stale-processing-after: 10m
+    openai:
+      # Leave blank to use deterministic offline embeddings (no network, no cost).
+      api-key: ${OPENAI_API_KEY:}
+      model: text-embedding-3-small
+
   jwt:
     # HS256 signing key. MUST be overridden via JWT_SECRET outside local dev;
     # the app refuses to start if it is under 32 bytes (256 bits).

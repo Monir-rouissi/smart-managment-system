@@ -92,6 +92,38 @@ class DocumentRbacTest extends IntegrationTest {
     }
 
     @Test
+    void onlyManagersAndAdminsCanTriggerReprocessing() throws Exception {
+        String managerToken = accessTokenFor("manager@local", "manager123");
+        String userToken = accessTokenFor("user@local", "user123");
+
+        String me = mvc.perform(get("/api/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken))
+                .andReturn().getResponse().getContentAsString();
+        String ownedProjectId = createProject(managerToken, JsonPath.read(me, "$.id"));
+
+        MockMultipartFile file = new MockMultipartFile("file", "notes.md", "text/markdown", "# hi".getBytes());
+        String uploaded = mvc.perform(multipart("/api/documents")
+                        .file(file)
+                        .param("projectId", ownedProjectId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken))
+                .andExpect(status().isAccepted())
+                .andReturn().getResponse().getContentAsString();
+        String documentId = JsonPath.read(uploaded, "$.id");
+
+        // Even on a document they uploaded themselves: re-ingesting costs embedding
+        // calls, so it is not a USER-triggerable action.
+        mvc.perform(post("/api/documents/{id}/reprocess", documentId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken))
+                .andExpect(status().isForbidden());
+
+        mvc.perform(post("/api/documents/{id}/reprocess", documentId))
+                .andExpect(status().isUnauthorized());
+
+        mvc.perform(post("/api/documents/{id}/reprocess", documentId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + managerToken))
+                .andExpect(status().isAccepted());
+    }
+
+    @Test
     void anonymousUploadIsRejected() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
                 "file", "notes.txt", MediaType.TEXT_PLAIN_VALUE, "hello".getBytes());

@@ -42,6 +42,17 @@ public class DocumentController {
                 .body(created);
     }
 
+    /**
+     * Re-runs extraction, chunking and embedding. Restricted to ADMIN/MANAGER:
+     * it is the manual retry for a FAILED document and it costs embedding calls,
+     * so it is not something every USER should be able to trigger in a loop.
+     */
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
+    @PostMapping("/api/documents/{id}/reprocess")
+    public ResponseEntity<DocumentResponse> reprocess(@PathVariable UUID id) {
+        return ResponseEntity.accepted().body(service.reprocess(id));
+    }
+
     @PreAuthorize("hasAnyRole('ADMIN','MANAGER','USER')")
     @GetMapping("/api/documents/{id}")
     public DocumentResponse get(@PathVariable UUID id) {
