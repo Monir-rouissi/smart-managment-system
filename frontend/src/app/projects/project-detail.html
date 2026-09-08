@@ -72,6 +72,45 @@
         </tbody>
       </table>
     }
+
+    <h2 style="font-size:1.1rem;margin-top:1.5rem">Documents</h2>
+
+    @if (canUploadDocument()) {
+      <form class="toolbar" (ngSubmit)="uploadDocument()">
+        <input #fileInput type="file" accept=".pdf,.docx,.txt,.md" />
+        <button class="btn btn-primary" type="submit" [disabled]="uploading()">
+          {{ uploading() ? 'Uploading…' : 'Upload' }}
+        </button>
+      </form>
+      @if (uploadError(); as err) {
+        <p class="field error" style="margin-top:-0.5rem">{{ err }}</p>
+      }
+    }
+
+    @if (documents().length === 0) {
+      <div class="card empty">No documents yet.</div>
+    } @else {
+      <table>
+        <thead>
+          <tr><th>Name</th><th>Size</th><th>Status</th><th>Uploaded by</th><th></th></tr>
+        </thead>
+        <tbody>
+          @for (d of documents(); track d.id) {
+            <tr>
+              <td>{{ d.name }}</td>
+              <td>{{ formatSize(d.sizeBytes) }}</td>
+              <td><span class="badge">{{ d.status }}</span></td>
+              <td>{{ d.uploadedByName || '—' }}</td>
+              <td>
+                <div class="row-actions">
+                  <button class="btn btn-sm" (click)="downloadDocument(d)">Download</button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
   } @else {
     <p class="muted">Loading…</p>
   }
