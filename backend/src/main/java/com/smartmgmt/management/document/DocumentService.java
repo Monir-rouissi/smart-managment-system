@@ -5,6 +5,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
@@ -17,6 +18,7 @@ import com.smartmgmt.auth.SecurityUtils;
 import com.smartmgmt.auth.UserPrincipal;
 import com.smartmgmt.common.NotFoundException;
 import com.smartmgmt.management.document.dto.DocumentResponse;
+import com.smartmgmt.management.document.ingest.DocumentIngestRequestedEvent;
 import com.smartmgmt.management.project.Project;
 import com.smartmgmt.management.project.ProjectRepository;
 import com.smartmgmt.management.user.Role;
@@ -39,14 +41,17 @@ public class DocumentService {
     private final UserRepository users;
     private final DocumentStorageService storage;
     private final DocumentStorageProperties storageProperties;
+    private final ApplicationEventPublisher events;
 
     public DocumentService(DocumentRepository documents, ProjectRepository projects, UserRepository users,
-            DocumentStorageService storage, DocumentStorageProperties storageProperties) {
+            DocumentStorageService storage, DocumentStorageProperties storageProperties,
+            ApplicationEventPublisher events) {
         this.documents = documents;
         this.projects = projects;
         this.users = users;
         this.storage = storage;
         this.storageProperties = storageProperties;
+        this.events = events;
     }
 
     public DocumentResponse upload(MultipartFile file, UUID projectId) {
@@ -80,7 +85,28 @@ public class DocumentService {
         document.setUploadedBy(currentUserEntity());
         document.setStatus(DocumentStatus.UPLOADED);
 
-        return DocumentResponse.from(documents.save(document));
+        Document saved = documents.save(document);
+        // Handled after this transaction commits -- a worker that starts sooner
+        // would look for a row that is not visible on its connection yet.
+        events.publishEvent(new DocumentIngestRequestedEvent(saved.getId()));
+        return DocumentResponse.from(saved);
+    }
+
+    /**
+     * Queues a document for ingestion again: after a FAILED attempt, or to
+     * re-chunk a READY one with new settings. Chunks are replaced, not appended.
+     */
+    public DocumentResponse reprocess(UUID id) {
+        Document document = findOrThrow(id);
+        requireVisible(document.getProject());
+        if (document.getStatus() == DocumentStatus.PROCESSING) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Document is already being processed");
+        }
+        document.setStatus(DocumentStatus.UPLOADED);
+        document.setErrorMessage(null);
+        Document saved = documents.save(document);
+        events.publishEvent(new DocumentIngestRequestedEvent(saved.getId()));
+        return DocumentResponse.from(saved);
     }
 
     @Transactional(readOnly = true)

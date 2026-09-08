@@ -28,6 +28,8 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
+		<tika.version>3.3.2</tika.version>
+		<jtokkit.version>1.1.0</jtokkit.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -54,6 +56,11 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-json</artifactId>
 		</dependency>
+		<!-- RestClient (embeddings API). Boot 4 no longer ships it with starter-webmvc. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-restclient</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
@@ -78,6 +85,35 @@
 		<dependency>
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-database-postgresql</artifactId>
+		</dependency>
+		<!-- pgvector <-> float[] mapping (SqlTypes.VECTOR). Version follows Boot's Hibernate. -->
+		<dependency>
+			<groupId>org.hibernate.orm</groupId>
+			<artifactId>hibernate-vector</artifactId>
+			<version>${hibernate.version}</version>
+		</dependency>
+		<!-- Text extraction. Targeted parser modules instead of tika-parsers-standard-package,
+		     which drags in ~100 jars for formats this app does not accept. -->
+		<dependency>
+			<groupId>org.apache.tika</groupId>
+			<artifactId>tika-core</artifactId>
+			<version>${tika.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.tika</groupId>
+			<artifactId>tika-parser-pdf-module</artifactId>
+			<version>${tika.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.tika</groupId>
+			<artifactId>tika-parser-microsoft-module</artifactId>
+			<version>${tika.version}</version>
+		</dependency>
+		<!-- Real token counts for chunk sizing (cl100k_base), offline. -->
+		<dependency>
+			<groupId>com.knuddels</groupId>
+			<artifactId>jtokkit</artifactId>
+			<version>${jtokkit.version}</version>
 		</dependency>
 
 		<dependency>
@@ -133,6 +169,11 @@
 		<dependency>
 			<groupId>org.testcontainers</groupId>
 			<artifactId>testcontainers-postgresql</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.awaitility</groupId>
+			<artifactId>awaitility</artifactId>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

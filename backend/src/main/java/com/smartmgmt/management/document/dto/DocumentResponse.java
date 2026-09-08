@@ -16,6 +16,10 @@ public record DocumentResponse(
         String projectName,
         UUID uploadedById,
         String uploadedByName,
+        int chunkCount,
+        String embeddingModel,
+        String errorMessage,
+        Instant processedAt,
         Instant createdAt) {
 
     public static DocumentResponse from(Document d) {
@@ -29,6 +33,10 @@ public record DocumentResponse(
                 d.getProject() == null ? null : d.getProject().getName(),
                 d.getUploadedBy() == null ? null : d.getUploadedBy().getId(),
                 d.getUploadedBy() == null ? null : d.getUploadedBy().getFullName(),
+                d.getChunkCount(),
+                d.getEmbeddingModel(),
+                d.getErrorMessage(),
+                d.getProcessedAt(),
                 d.getCreatedAt());
     }
 }

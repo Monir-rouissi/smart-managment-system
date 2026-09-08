@@ -40,8 +40,8 @@ smart-managment-sytem/
 | Core CRUD (customers, projects, tasks + UI + Testcontainers) | Done |
 | JWT + RBAC (`ADMIN` / `MANAGER` / `USER`) | Done |
 | Audit trail | **Next** |
-| Document upload (disk storage, no processing yet) | Done |
-| Extract → chunk → embeddings | Not started |
+| Document upload (disk storage) | Done |
+| Extract → chunk → embeddings → pgvector (async) | Done |
 | Keyword + semantic search | Not started |
 | RAG chatbot + citations | Not started |
 | Database-aware chat (read-only tools) | Not started |
@@ -81,11 +81,11 @@ a related entity's column (e.g. `owner.passwordHash`) — invalid fields get a 4
 After that: Phase 3 audit trail, then extract/chunk/embed, then search/RAG. Do not start
 the chatbot until auth and document search work. See the plan for the rest.
 
-## Documents (upload only — Phase 4)
+## Documents (upload + ingestion — Phases 4-6)
 
-Files are stored on disk, not in the database — only their metadata is. No text
-extraction or embeddings happen yet; every uploaded document starts and stays in
-`UPLOADED` status until a later phase adds processing.
+Files are stored on disk, not in the database — only their metadata is. Upload returns
+`202` immediately and ingestion runs in the background: `UPLOADED` → `PROCESSING` →
+`READY` (or `FAILED`).
 
 - Allowed types: PDF, DOCX, TXT, MD (checked by file extension, not the client's
   `Content-Type`, since browsers send inconsistent values for `.md`).
@@ -102,6 +102,54 @@ Uploaded files are written under `app.storage.documents-dir` (default
 `backend/uploads/documents`, gitignored) with a generated UUID filename — the original
 name is only ever used for the `Content-Disposition` header on download, never as a
 path segment.
+
+### Ingestion pipeline (Phase 5-6)
+
+```text
+POST /api/documents  ->  store bytes, INSERT documents(status=UPLOADED), COMMIT, 202
+                              |
+                    AFTER_COMMIT event -> bounded executor (2 threads)
+                              |
+   claim (UPDATE ... WHERE status IN ('UPLOADED','FAILED'))  -- one winner
+      -> extract (Tika; PDF keeps one segment per page)
+      -> clean  (collapse whitespace, drop NULs/soft hyphens)
+      -> chunk  (600 cl100k_base tokens, 90 overlap, page label per chunk)
+      -> embed  (batched, outside any transaction)
+      -> INSERT document_chunks + status READY        (one transaction)
+   failure at any step -> status FAILED + error_message, retry_count += 1
+```
+
+Locked choices, and what they cost:
+
+- **No broker.** The queue is an in-memory `ThreadPoolTaskExecutor` with a bounded queue
+  and `CallerRunsPolicy`, so a burst makes uploads slow rather than dropping them. A
+  restart still loses whatever is queued — which is why the *document row* is the real
+  queue: `IngestionRecovery` re-submits `UPLOADED` rows at startup and returns rows
+  abandoned in `PROCESSING` (older than `app.ingest.stale-processing-after`) to the queue.
+- **Enqueue after commit.** The listener is `@TransactionalEventListener(AFTER_COMMIT)`;
+  submitting inside the transaction races the worker against the insert.
+- **No transaction across the embedding call.** Every DB write is a short transaction in
+  `IngestionStore`; the HTTP call happens with nothing open, so it cannot pin a pooled
+  connection.
+- **Dimension is fixed at 1536** (`text-embedding-3-small`) by `vector(1536)` in `V6`.
+  A different model dimension is a new migration, not an `ALTER`; a mismatch between
+  `app.ingest.dimensions` and the column fails at startup rather than per row.
+- **Re-processing replaces.** `POST /api/documents/{id}/reprocess` (ADMIN/MANAGER, `409`
+  while `PROCESSING`) deletes the document's chunks before inserting new ones. There is
+  no automatic retry: an embeddings outage should surface as `FAILED`, not as a loop
+  that burns quota.
+- **No embeddings API key needed to run it.** With `app.ingest.openai.api-key` blank
+  (the default), a deterministic offline `HashEmbeddingClient` produces unit vectors, so
+  the pipeline and its tests run with no network. Those vectors carry no meaning —
+  semantic search needs a real key (`OPENAI_API_KEY`).
+- **No ANN index yet.** The HNSW index arrives with the Phase 7 search query; indexing an
+  empty table only slows inserts.
+- **No OCR.** A scanned PDF yields no text and ends `FAILED` with that message.
+
+Chunks are internal: nothing returns their text yet. `GET /api/documents/{id}` exposes
+`status`, `chunkCount`, `embeddingModel`, `errorMessage` and `processedAt`.
+
+Deleting a document deletes its chunks (`ON DELETE CASCADE`).
 
 ## Run it
 
@@ -156,7 +204,14 @@ cd frontend && npm test
 from `POST /api/projects`, MANAGER allowed, expired token rejected, bad sort field
 rejected). `DocumentControllerTest` covers upload → get → download → list-by-project
 and rejects an unsupported file type; `DocumentRbacTest` covers USER upload restricted
-to an owned project (and blocked for a project-less upload) plus the anonymous-401 case.
+to an owned project (and blocked for a project-less upload) plus the anonymous-401 case,
+and that reprocessing is ADMIN/MANAGER-only. `ChunkerTest` pins the window arithmetic
+(contiguous indices, real overlap, page labels, full coverage); `DocumentIngestionTest`
+runs the pipeline end to end against Postgres — READY with 1536-dim vectors, page labels
+from a generated two-page PDF, a corrupt file ending FAILED with a message, reprocess
+replacing rather than appending chunks, and cascade delete. It is deliberately *not*
+`@Transactional`: ingestion fires after commit, so a rolled-back test would never
+trigger it.
 
 ## API (current)
 
@@ -166,7 +221,7 @@ to an owned project (and blocked for a project-less upload) plus the anonymous-4
 | Customers | `GET/POST /api/customers`, `GET/PUT/DELETE /api/customers/{id}` | `q` |
 | Projects | `GET/POST /api/projects`, `GET/PUT/DELETE /api/projects/{id}` | `q`, `status`, `customerId`, `ownerId`, `overdue` |
 | Tasks | `GET/POST /api/tasks`, `GET/PUT/DELETE /api/tasks/{id}` | `q`, `status`, `projectId`, `assigneeId` |
-| Documents | `POST /api/documents` (multipart, `file` + optional `projectId`), `GET /api/documents/{id}`, `GET /api/documents/{id}/download`, `GET /api/projects/{id}/documents` | — |
+| Documents | `POST /api/documents` (multipart, `file` + optional `projectId`), `GET /api/documents/{id}`, `GET /api/documents/{id}/download`, `POST /api/documents/{id}/reprocess` (ADMIN/MANAGER), `GET /api/projects/{id}/documents` | — |
 
 All endpoints except `/api/auth/**` and `/api/health` require a `Bearer` access token.
 List endpoints take `page`, `size` (max 100), `sort` (allowlisted per resource). Bodies
@@ -176,3 +231,13 @@ use DTOs; lists return a `PageResponse` envelope. Validation errors are RFC 9457
 
 README sections for the audit trail, RAG + citations, SQL-tool safety, and eval will be
 added when those phases land.
+
+## Known gaps
+
+- The **audit trail (Phase 3) was skipped** — the plan's order was audit → documents →
+  ingestion, and ingestion was built first. `audit_log` does not exist yet.
+- Ingestion writes no audit rows. When Phase 3 lands, note that the worker thread has no
+  `SecurityContext` (it is not the request thread, and the uploader's token may have
+  expired), so the actor must come from `documents.uploaded_by`, not
+  `SecurityUtils.currentUser()`.
+- A `USER` cannot trigger reprocessing even on their own document, by design.

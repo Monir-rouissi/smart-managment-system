@@ -1,5 +1,7 @@
 package com.smartmgmt.management.document;
 
+import java.time.Instant;
+
 import com.smartmgmt.common.BaseEntity;
 import com.smartmgmt.management.project.Project;
 import com.smartmgmt.management.user.User;
@@ -45,4 +47,21 @@ public class Document extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private DocumentStatus status = DocumentStatus.UPLOADED;
+
+    /** Which embedding model produced this document's chunks. Null until ingestion succeeds. */
+    @Column(name = "embedding_model", length = 60)
+    private String embeddingModel;
+
+    @Column(name = "chunk_count", nullable = false)
+    private int chunkCount;
+
+    /** Why the last ingestion attempt failed. Cleared when a later attempt succeeds. */
+    @Column(name = "error_message", columnDefinition = "text")
+    private String errorMessage;
+
+    @Column(name = "retry_count", nullable = false)
+    private int retryCount;
+
+    @Column(name = "processed_at")
+    private Instant processedAt;
 }
