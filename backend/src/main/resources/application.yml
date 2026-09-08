@@ -27,6 +27,11 @@ spring:
         max-page-size: 100
         one-indexed-parameters: false
 
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 25MB
+
 server:
   port: ${SERVER_PORT:8080}
 
@@ -48,6 +53,10 @@ info:
     description: AI-Powered Management & Knowledge Platform
 
 app:
+  storage:
+    documents-dir: ${DOCUMENTS_DIR:./uploads/documents}
+    max-file-size-bytes: 26214400 # 25MB, keep in sync with spring.servlet.multipart.max-file-size
+
   jwt:
     # HS256 signing key. MUST be overridden via JWT_SECRET outside local dev;
     # the app refuses to start if it is under 32 bytes (256 bits).

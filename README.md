@@ -3,8 +3,9 @@
 Enterprise project & knowledge platform: Angular + Spring Boot + PostgreSQL/pgvector,
 with a RAG assistant that answers from **app data and documents** (not a generic chatbot).
 
-**Today this repo has the management CRUD foundation plus JWT auth and RBAC.** Audit,
-documents, and RAG are planned, not implemented. Full roadmap: [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
+**Today this repo has the management CRUD foundation, JWT auth/RBAC, and document
+upload.** Audit trail and RAG are planned, not implemented. Full roadmap:
+[`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
 
 ## Stack
 
@@ -39,7 +40,8 @@ smart-managment-sytem/
 | Core CRUD (customers, projects, tasks + UI + Testcontainers) | Done |
 | JWT + RBAC (`ADMIN` / `MANAGER` / `USER`) | Done |
 | Audit trail | **Next** |
-| Document upload → extract → chunk → embeddings | Not started |
+| Document upload (disk storage, no processing yet) | Done |
+| Extract → chunk → embeddings | Not started |
 | Keyword + semantic search | Not started |
 | RAG chatbot + citations | Not started |
 | Database-aware chat (read-only tools) | Not started |
@@ -76,8 +78,30 @@ Change or remove these before any non-local deployment, and set a real `JWT_SECR
 List endpoints also allowlist `?sort=` fields per resource, so a client cannot sort by
 a related entity's column (e.g. `owner.passwordHash`) — invalid fields get a 400.
 
-After that: Phase 3 audit trail, then documents, then search/RAG. Do not start the chatbot
-until auth and document search work. See the plan for the rest.
+After that: Phase 3 audit trail, then extract/chunk/embed, then search/RAG. Do not start
+the chatbot until auth and document search work. See the plan for the rest.
+
+## Documents (upload only — Phase 4)
+
+Files are stored on disk, not in the database — only their metadata is. No text
+extraction or embeddings happen yet; every uploaded document starts and stays in
+`UPLOADED` status until a later phase adds processing.
+
+- Allowed types: PDF, DOCX, TXT, MD (checked by file extension, not the client's
+  `Content-Type`, since browsers send inconsistent values for `.md`).
+- Max size: 25 MB (`spring.servlet.multipart.max-file-size`, kept in sync with
+  `app.storage.max-file-size-bytes`).
+- A document can optionally belong to a project (`projectId`); one with no project is
+  a global upload.
+
+Visibility follows the same ownership rule as projects: ADMIN/MANAGER see and upload
+anything; a USER can only upload to, list, or download documents on a project they own,
+and cannot create a project-less (global) document at all.
+
+Uploaded files are written under `app.storage.documents-dir` (default
+`backend/uploads/documents`, gitignored) with a generated UUID filename — the original
+name is only ever used for the `Content-Disposition` header on download, never as a
+path segment.
 
 ## Run it
 
@@ -103,6 +127,8 @@ cd backend
 
 Override DB with `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` if needed, and set `JWT_SECRET`
 to a real 32+ byte value outside local dev (there's a dev-only default otherwise).
+Uploaded documents are written under `backend/uploads/documents` by default (gitignored);
+override the location with `DOCUMENTS_DIR`.
 
 ### 3. Frontend
 
@@ -128,7 +154,9 @@ cd frontend && npm test
 `AuthControllerTest` covers login/refresh-rotation/logout/`/api/me`; `RbacTest` and
 `ExpiredTokenTest` cover the milestone's "done when" criteria directly (USER blocked
 from `POST /api/projects`, MANAGER allowed, expired token rejected, bad sort field
-rejected).
+rejected). `DocumentControllerTest` covers upload → get → download → list-by-project
+and rejects an unsupported file type; `DocumentRbacTest` covers USER upload restricted
+to an owned project (and blocked for a project-less upload) plus the anonymous-401 case.
 
 ## API (current)
 
@@ -138,6 +166,7 @@ rejected).
 | Customers | `GET/POST /api/customers`, `GET/PUT/DELETE /api/customers/{id}` | `q` |
 | Projects | `GET/POST /api/projects`, `GET/PUT/DELETE /api/projects/{id}` | `q`, `status`, `customerId`, `ownerId`, `overdue` |
 | Tasks | `GET/POST /api/tasks`, `GET/PUT/DELETE /api/tasks/{id}` | `q`, `status`, `projectId`, `assigneeId` |
+| Documents | `POST /api/documents` (multipart, `file` + optional `projectId`), `GET /api/documents/{id}`, `GET /api/documents/{id}/download`, `GET /api/projects/{id}/documents` | — |
 
 All endpoints except `/api/auth/**` and `/api/health` require a `Bearer` access token.
 List endpoints take `page`, `size` (max 100), `sort` (allowlisted per resource). Bodies
