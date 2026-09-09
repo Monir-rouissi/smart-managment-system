@@ -46,6 +46,12 @@ export const routes: Routes = [
   },
 
   {
+    path: 'search',
+    loadComponent: () => import('./search/search-page').then((m) => m.SearchPage),
+    canActivate: [authGuard],
+  },
+
+  {
     path: 'tasks',
     loadComponent: () => import('./tasks/task-list').then((m) => m.TaskList),
     canActivate: [authGuard],

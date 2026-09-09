@@ -1,0 +1,74 @@
+<div class="container">
+  <div class="page-header">
+    <h1>Search</h1>
+  </div>
+
+  <form class="toolbar" (ngSubmit)="$event.preventDefault()">
+    <input
+      [formControl]="control"
+      type="search"
+      placeholder="Search documents…"
+      style="min-width:20rem"
+      autocomplete="off"
+    />
+    <div class="row-actions" style="justify-content:flex-start">
+      @for (m of modes; track m) {
+        <button
+          type="button"
+          class="btn btn-sm"
+          [class.btn-primary]="mode() === m"
+          (click)="setMode(m)"
+        >
+          {{ modeLabel(m) }}
+        </button>
+      }
+    </div>
+  </form>
+
+  @if (error(); as err) {
+    <div class="card empty">{{ err }}</div>
+  } @else if (tooShort()) {
+    <div class="card empty">Type at least 2 characters.</div>
+  } @else if (query().length === 0) {
+    <div class="card empty">Search across every document you can see.</div>
+  } @else if (loading() && !results()) {
+    <div class="card empty">Searching…</div>
+  } @else if (results(); as page) {
+    @if (page.content.length === 0) {
+      <div class="card empty">No matches for “{{ query() }}”.</div>
+    } @else {
+      <p class="muted" style="font-size:0.85rem">
+        {{ page.totalElements }} result{{ page.totalElements === 1 ? '' : 's' }}
+        @if (mode() !== 'KEYWORD') {
+          <span> · ranked, not counted exactly</span>
+        }
+      </p>
+
+      @for (hit of page.content; track hit.chunkId) {
+        <div class="card" style="margin-bottom:0.75rem">
+          <div style="display:flex; gap:0.5rem; align-items:baseline; flex-wrap:wrap">
+            @if (hit.projectId) {
+              <a [routerLink]="['/projects', hit.projectId]"><strong>{{ hit.documentName }}</strong></a>
+            } @else {
+              <strong>{{ hit.documentName }}</strong>
+            }
+            @if (hit.pageOrSection) {
+              <span class="badge">{{ hit.pageOrSection }}</span>
+            }
+            @if (mode() === 'HYBRID') {
+              <span class="badge">{{ matchLabel(hit) }}</span>
+            }
+            @if (hit.projectName) {
+              <span class="muted" style="font-size:0.8rem">{{ hit.projectName }}</span>
+            }
+          </div>
+          <p style="margin-bottom:0">
+            @for (part of parts(hit); track $index) {
+              @if (part.marked) { <mark>{{ part.text }}</mark> } @else { {{ part.text }} }
+            }
+          </p>
+        </div>
+      }
+    }
+  }
+</div>
