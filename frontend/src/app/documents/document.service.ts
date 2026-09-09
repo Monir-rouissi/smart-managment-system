@@ -26,6 +26,15 @@ export class DocumentService {
     return this.http.post<AppDocument>(url, form);
   }
 
+  /**
+   * Re-runs extraction + embedding for a document (ADMIN/MANAGER only).
+   * Returns 202 with the document back in a pending state; the backend answers 409 while it is
+   * already PROCESSING, which the caller should treat as "someone beat me to it", not as an error.
+   */
+  reprocess(id: string): Observable<AppDocument> {
+    return this.http.post<AppDocument>(`${this.baseUrl}/${id}/reprocess`, {});
+  }
+
   /** Fetches the file as a blob and triggers a browser download via a temporary anchor. */
   download(doc: AppDocument): void {
     this.http.get(`${this.baseUrl}/${doc.id}/download`, { responseType: 'blob' }).subscribe((blob) => {

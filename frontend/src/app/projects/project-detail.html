@@ -92,17 +92,29 @@
     } @else {
       <table>
         <thead>
-          <tr><th>Name</th><th>Size</th><th>Status</th><th>Uploaded by</th><th></th></tr>
+          <tr><th>Name</th><th>Size</th><th>Status</th><th>Chunks</th><th>Uploaded by</th><th></th></tr>
         </thead>
         <tbody>
           @for (d of documents(); track d.id) {
             <tr>
               <td>{{ d.name }}</td>
               <td>{{ formatSize(d.sizeBytes) }}</td>
-              <td><span class="badge">{{ d.status }}</span></td>
+              <td>
+                <span class="badge" [class]="statusClass(d)" [title]="statusTitle(d)">{{ statusLabel(d) }}</span>
+                @if (d.status === 'FAILED' && d.errorMessage) {
+                  <div class="muted ingest-error">{{ d.errorMessage }}</div>
+                }
+              </td>
+              <td>{{ d.status === 'READY' ? d.chunkCount : '—' }}</td>
               <td>{{ d.uploadedByName || '—' }}</td>
               <td>
                 <div class="row-actions">
+                  @if (canReprocess(d)) {
+                    <button class="btn btn-sm" (click)="reprocessDocument(d)" [disabled]="reprocessing() === d.id"
+                            title="Re-run extraction and embedding">
+                      {{ reprocessing() === d.id ? '…' : 'Reprocess' }}
+                    </button>
+                  }
                   <button class="btn btn-sm" (click)="downloadDocument(d)">Download</button>
                 </div>
               </td>
@@ -110,6 +122,9 @@
           }
         </tbody>
       </table>
+      @if (watchingIngestion()) {
+        <p class="muted" style="font-size:0.8rem">Processing documents… this view refreshes automatically.</p>
+      }
     }
   } @else {
     <p class="muted">Loading…</p>

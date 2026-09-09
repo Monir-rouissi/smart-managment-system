@@ -149,6 +149,18 @@ Locked choices, and what they cost:
 Chunks are internal: nothing returns their text yet. `GET /api/documents/{id}` exposes
 `status`, `chunkCount`, `embeddingModel`, `errorMessage` and `processedAt`.
 
+### Ingestion status in the UI
+
+Project detail shows each document's ingestion state (`Queued` / `Processing…` / `Ready` /
+`Failed`), the chunk count once it is `READY`, and the failure message when it is not.
+
+Because ingestion is asynchronous, the page **polls the project's document list every 3s**
+while any document is still `UPLOADED` or `PROCESSING`, and stops as soon as all of them
+settle. One request per tick covers the whole list. The poll is capped at 40 ticks (~2 min)
+so a document wedged in `PROCESSING` by a dead worker cannot poll forever in a background
+tab — reload the page in that case. ADMIN/MANAGER also get a **Reprocess** button on
+settled documents; a `409` (ingestion already running) is treated as success, not an error.
+
 Deleting a document deletes its chunks (`ON DELETE CASCADE`).
 
 ## Run it
@@ -241,3 +253,6 @@ added when those phases land.
   expired), so the actor must come from `documents.uploaded_by`, not
   `SecurityUtils.currentUser()`.
 - A `USER` cannot trigger reprocessing even on their own document, by design.
+- `OpenAiEmbeddingClient` has never been run against the real API. Every green test embeds
+  with the offline `HashEmbeddingClient`, so the 429 backoff, the 401 path and the
+  `dimensions` request parameter are unexercised.

@@ -109,6 +109,13 @@ tr:last-child td { border-bottom: none; }
 }
 .badge.overdue { background: #fef3f2; color: var(--danger); }
 
+/* Document ingestion states (async worker: queued -> processing -> ready/failed). */
+.badge.queued     { background: #f1f5f9; color: var(--muted); }
+.badge.processing { background: #fffaeb; color: #b54708; }
+.badge.ready      { background: #ecfdf3; color: #027a48; }
+.badge.failed     { background: #fef3f2; color: var(--danger); }
+.ingest-error { font-size: 0.75rem; max-width: 22rem; }
+
 .muted { color: var(--muted); }
 .empty { padding: 2rem; text-align: center; color: var(--muted); }
 .row-actions { display: flex; gap: 0.4rem; justify-content: flex-end; }
