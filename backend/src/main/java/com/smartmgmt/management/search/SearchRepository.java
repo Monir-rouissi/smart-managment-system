@@ -156,6 +156,26 @@ public class SearchRepository {
     }
 
     /**
+     * Full chunk text for exactly the given ids, for RAG prompt-building. {@code
+     * preview} (400 chars) is a snippet for a results list; a prompt needs the
+     * whole chunk. Callers pass ids already scoped by {@link #semantic}, so this
+     * carries no visibility predicate of its own -- same trust boundary as
+     * {@link #headlines}.
+     */
+    public Map<UUID, String> content(Collection<UUID> chunkIds) {
+        if (chunkIds.isEmpty()) {
+            return Map.of();
+        }
+        String sql = "SELECT c.id AS chunk_id, c.content AS content FROM document_chunks c WHERE c.id IN (:ids)";
+        List<Map.Entry<UUID, String>> rows = jdbc.query(sql, new MapSqlParameterSource().addValue("ids", chunkIds),
+                (rs, i) -> Map.entry(rs.getObject("chunk_id", UUID.class), rs.getString("content")));
+
+        Map<UUID, String> byId = new HashMap<>(rows.size());
+        rows.forEach(row -> byId.put(row.getKey(), row.getValue()));
+        return byId;
+    }
+
+    /**
      * Highlighted snippets for exactly the chunks being returned.
      *
      * <p>{@code ts_headline} re-parses the original text and is expensive. Running

@@ -39,11 +39,11 @@ smart-managment-sytem/
 | Scaffold (Compose, Flyway, Actuator, Angular, `/api/health`) | Done |
 | Core CRUD (customers, projects, tasks + UI + Testcontainers) | Done |
 | JWT + RBAC (`ADMIN` / `MANAGER` / `USER`) | Done |
-| Audit trail | **Next** |
+| Audit trail | **Next** (skipped so far -- see Known gaps) |
 | Document upload (disk storage) | Done |
 | Extract → chunk → embeddings → pgvector (async) | Done |
-| Keyword + semantic search | Not started |
-| RAG chatbot + citations | Not started |
+| Keyword + semantic search | Written, not verified -- see `steps/phase7.md` |
+| RAG chatbot + citations | Written, not verified -- see `steps/phase8.md` |
 | Database-aware chat (read-only tools) | Not started |
 | Redis, WebSocket, observability, eval, Docker deploy | Later |
 
@@ -78,8 +78,10 @@ Change or remove these before any non-local deployment, and set a real `JWT_SECR
 List endpoints also allowlist `?sort=` fields per resource, so a client cannot sort by
 a related entity's column (e.g. `owner.passwordHash`) — invalid fields get a 400.
 
-After that: Phase 3 audit trail, then extract/chunk/embed, then search/RAG. Do not start
-the chatbot until auth and document search work. See the plan for the rest.
+After that: Phase 3 audit trail, then extract/chunk/embed, then search/RAG. The chatbot
+(Phase 8) was built once search compiled and type-checked clean, on the explicit
+understanding that neither has actually been *run* yet -- see `steps/phase7.md` and
+`steps/phase8.md` for exactly what is proven versus merely written before trusting either.
 
 ## Documents (upload + ingestion — Phases 4-6)
 
@@ -234,6 +236,8 @@ trigger it.
 | Projects | `GET/POST /api/projects`, `GET/PUT/DELETE /api/projects/{id}` | `q`, `status`, `customerId`, `ownerId`, `overdue` |
 | Tasks | `GET/POST /api/tasks`, `GET/PUT/DELETE /api/tasks/{id}` | `q`, `status`, `projectId`, `assigneeId` |
 | Documents | `POST /api/documents` (multipart, `file` + optional `projectId`), `GET /api/documents/{id}`, `GET /api/documents/{id}/download`, `POST /api/documents/{id}/reprocess` (ADMIN/MANAGER), `GET /api/projects/{id}/documents` | — |
+| Search | `GET /api/search` | `q`, `mode` (`KEYWORD`\|`SEMANTIC`\|`HYBRID`), `projectId` |
+| Chat | `POST /api/chat` (`{conversationId?, message, projectId?}`), `GET /api/chat/conversations` (own only), `GET /api/chat/conversations/{id}` (own only, 404 if not) | `projectId` |
 
 All endpoints except `/api/auth/**` and `/api/health` require a `Bearer` access token.
 List endpoints take `page`, `size` (max 100), `sort` (allowlisted per resource). Bodies
@@ -241,8 +245,9 @@ use DTOs; lists return a `PageResponse` envelope. Validation errors are RFC 9457
 `ProblemDetail` (400 + `errors`); unknown ids return 404; RBAC/ownership denials return
 403; missing/invalid/expired tokens return 401.
 
-README sections for the audit trail, RAG + citations, SQL-tool safety, and eval will be
-added when those phases land.
+README sections for the audit trail, SQL-tool safety, and eval will be added when
+those phases land. See `steps/phase7.md` for how search's ranking/visibility works
+and `steps/phase8.md` for how the chatbot grounds an answer and refuses when it can't.
 
 ## Known gaps
 
@@ -255,4 +260,13 @@ added when those phases land.
 - A `USER` cannot trigger reprocessing even on their own document, by design.
 - `OpenAiEmbeddingClient` has never been run against the real API. Every green test embeds
   with the offline `HashEmbeddingClient`, so the 429 backoff, the 401 path and the
-  `dimensions` request parameter are unexercised.
+  `dimensions` request parameter are unexercised. As of this write-up, **Gemini is the
+  preferred embedding provider** (`GeminiEmbeddingClient`, wins over OpenAI when both keys
+  are set) and is equally unverified against the real API.
+- **Phase 8 (RAG chatbot) has never been run either.** `GeminiChatClient` (`generateContent`)
+  compiles against Google's documented request/response shape but has made zero real calls.
+  `ChatControllerTest` only proves the loop *around* the LLM (persistence, RBAC, the
+  no-context "I don't know" path) — every retrieval in that suite legitimately returns
+  nothing because it runs on `HashEmbeddingClient` vectors, so the actual grounded-answer
+  path (item 39: a policy question answered from your docs, not generic knowledge) has
+  never executed. See `steps/phase8.md`.

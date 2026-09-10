@@ -1,0 +1,78 @@
+<div class="card" style="display:flex; gap:1rem; min-height:24rem">
+  <div style="width:12rem; flex-shrink:0; border-right:1px solid var(--border, #ddd); padding-right:0.75rem">
+    <button type="button" class="btn btn-sm btn-primary" style="width:100%; margin-bottom:0.5rem" (click)="startNewConversation()">
+      + New chat
+    </button>
+    @if (conversations().length === 0) {
+      <p class="muted" style="font-size:0.8rem">No conversations yet.</p>
+    } @else {
+      <div style="display:flex; flex-direction:column; gap:0.25rem">
+        @for (c of conversations(); track c.id) {
+          <button
+            type="button"
+            class="btn btn-sm"
+            [class.btn-primary]="activeId() === c.id"
+            style="text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap"
+            (click)="openConversation(c)"
+          >
+            {{ conversationLabel(c) }}
+          </button>
+        }
+      </div>
+    }
+  </div>
+
+  <div style="flex:1; display:flex; flex-direction:column; min-width:0">
+    <div style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:0.75rem; padding-bottom:0.5rem">
+      @if (loadingHistory()) {
+        <p class="muted">Loading…</p>
+      } @else if (messages().length === 0) {
+        <p class="muted">
+          Ask a question about {{ projectId ? 'this project\'s documents' : 'anything you can see' }}. Answers are
+          grounded in your documents only — the assistant says “I don’t know” rather than guessing.
+        </p>
+      }
+
+      @for (m of messages(); track m.id) {
+        <div [style.align-self]="m.role === 'USER' ? 'flex-end' : 'flex-start'" style="max-width:85%">
+          <div class="card" [style.background]="m.role === 'USER' ? 'var(--surface-2, #eef)' : ''">
+            <p style="white-space:pre-wrap; margin:0">{{ m.content }}</p>
+            @if (groupedSources(m.sources).length > 0) {
+              <div style="margin-top:0.5rem; display:flex; flex-wrap:wrap; gap:0.25rem">
+                @for (s of groupedSources(m.sources); track s.chunkId) {
+                  <span class="badge" [title]="'Retrieved chunk score: ' + (s.score | number: '1.2-2')">
+                    {{ s.documentName }}{{ s.pageOrSection ? ' · ' + s.pageOrSection : '' }}
+                  </span>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      @if (sending()) {
+        <div style="align-self:flex-start; max-width:85%">
+          <div class="card empty">Thinking…</div>
+        </div>
+      }
+    </div>
+
+    @if (error(); as err) {
+      <div class="card empty" style="margin-bottom:0.5rem">{{ err }}</div>
+    }
+
+    <form class="toolbar" (ngSubmit)="send()">
+      <input
+        [ngModel]="draft()"
+        (ngModelChange)="draft.set($event)"
+        name="draft"
+        type="text"
+        placeholder="Ask a question about your documents…"
+        style="flex:1"
+        [disabled]="sending()"
+        autocomplete="off"
+      />
+      <button type="submit" class="btn btn-primary btn-sm" [disabled]="sending() || !draft().trim()">Send</button>
+    </form>
+  </div>
+</div>

@@ -31,15 +31,19 @@ public class IngestionConfig {
     }
 
     /**
-     * One embedding client for the whole app. Without an API key the offline
-     * implementation is used, so the pipeline still runs end to end (and tests
-     * never reach the network).
+     * One embedding client for the whole app, picked by which key is configured.
+     * Gemini wins if both are set -- it is the preferred provider going forward.
+     * Without either key the offline implementation is used, so the pipeline still
+     * runs end to end (and tests never reach the network).
      */
     @Bean
     public EmbeddingClient embeddingClient(IngestionProperties properties, RestClient.Builder restClientBuilder) {
-        if (properties.getOpenai().getApiKey() == null || properties.getOpenai().getApiKey().isBlank()) {
-            return new HashEmbeddingClient(properties.getDimensions());
+        if (properties.getGemini().getApiKey() != null && !properties.getGemini().getApiKey().isBlank()) {
+            return new GeminiEmbeddingClient(restClientBuilder, properties);
         }
-        return new OpenAiEmbeddingClient(restClientBuilder, properties);
+        if (properties.getOpenai().getApiKey() != null && !properties.getOpenai().getApiKey().isBlank()) {
+            return new OpenAiEmbeddingClient(restClientBuilder, properties);
+        }
+        return new HashEmbeddingClient(properties.getDimensions());
     }
 }

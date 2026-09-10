@@ -69,8 +69,23 @@ app:
     stale-processing-after: 10m
     openai:
       # Leave blank to use deterministic offline embeddings (no network, no cost).
+      # Ignored while gemini.api-key below is set -- Gemini wins when both are present.
       api-key: ${OPENAI_API_KEY:}
       model: text-embedding-3-small
+    gemini:
+      # Preferred provider: set GEMINI_API_KEY and leave OPENAI_API_KEY blank.
+      api-key: ${GEMINI_API_KEY:}
+      model: gemini-embedding-001
+
+  chat:
+    context-chunks: 6
+    history-turns: 20
+    gemini:
+      # Same key as app.ingest.gemini.api-key above -- one GEMINI_API_KEY, two uses.
+      api-key: ${GEMINI_API_KEY:}
+      model: gemini-3.8-flash
+      temperature: 0.2
+      max-output-tokens: 1024
 
   jwt:
     # HS256 signing key. MUST be overridden via JWT_SECRET outside local dev;

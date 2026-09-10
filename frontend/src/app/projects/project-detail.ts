@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { EMPTY, Subscription, catchError, switchMap, take, takeWhile, tap, timer } from 'rxjs';
 
+import { ChatPanel } from '../chat/chat-panel';
 import { AuthService } from '../core/auth.service';
 import { AppDocument, DocumentStatus, isDocumentPending } from '../documents/document';
 import { DocumentService } from '../documents/document.service';
@@ -19,7 +20,7 @@ const POLL_MAX_TICKS = 40;
 
 @Component({
   selector: 'app-project-detail',
-  imports: [RouterLink, ReactiveFormsModule],
+  imports: [RouterLink, ReactiveFormsModule, ChatPanel],
   templateUrl: './project-detail.html',
 })
 export class ProjectDetail {

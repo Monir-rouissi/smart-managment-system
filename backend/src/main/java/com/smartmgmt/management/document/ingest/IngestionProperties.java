@@ -45,6 +45,8 @@ public class IngestionProperties {
 
     private final OpenAi openai = new OpenAi();
 
+    private final Gemini gemini = new Gemini();
+
     @Getter
     @Setter
     public static class OpenAi {
@@ -55,6 +57,28 @@ public class IngestionProperties {
         private String model = "text-embedding-3-small";
 
         private String baseUrl = "https://api.openai.com/v1";
+
+        private Duration timeout = Duration.ofSeconds(60);
+
+        private int maxAttempts = 3;
+    }
+
+    /**
+     * Google Gemini embeddings. Preferred over {@link OpenAi} when both keys are set --
+     * see {@code IngestionConfig.embeddingClient}. {@code dimensions} (1536) is sent as
+     * Gemini's {@code outputDimensionality}, truncating the model's native 3072-dim
+     * output via MRL so the existing {@code vector(1536)} column needs no migration.
+     */
+    @Getter
+    @Setter
+    public static class Gemini {
+
+        /** When blank (and openai.apiKey is also blank), the offline HashEmbeddingClient is used. */
+        private String apiKey = "";
+
+        private String model = "gemini-embedding-001";
+
+        private String baseUrl = "https://generativelanguage.googleapis.com/v1beta";
 
         private Duration timeout = Duration.ofSeconds(60);
 

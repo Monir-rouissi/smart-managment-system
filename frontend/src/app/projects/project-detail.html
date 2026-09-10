@@ -126,6 +126,11 @@
         <p class="muted" style="font-size:0.8rem">Processing documents… this view refreshes automatically.</p>
       }
     }
+
+    <div class="page-header" style="margin-top:1.5rem">
+      <h2>Chat</h2>
+    </div>
+    <app-chat-panel [projectId]="p.id" />
   } @else {
     <p class="muted">Loading…</p>
   }
